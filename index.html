@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>theHunter Classic Preserved</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    min-height: 100vh; font-family: 'Inter', sans-serif;
+    background: linear-gradient(rgba(10, 22, 34, 0.62), rgba(6, 14, 22, 0.82)), url("image(3).png");
+    background-size: cover; background-position: center center; background-repeat: no-repeat; background-attachment: fixed;
+    color: white; display: flex; align-items: center; justify-content: center;
+    padding: 45px 20px; overflow-x: hidden; position: relative;
+}
+
+/* Snow canvas: falling flakes, piles and shoveled snow */
+#snow-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
+/* Shovel that follows the cursor when it is near snowy surfaces */
+#shovel {
+    position: fixed; top: 0; left: 0; width: 70px; height: 70px;
+    pointer-events: none; z-index: 60; opacity: 0;
+    transition: opacity 0.18s ease;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.55));
+}
+#shovel.on { opacity: 1; }
+#shovel svg { width: 100%; height: 100%; display: block; }
+
+#vector-bunny {
+    position: fixed; top: 0; left: 0; width: 120px; height: 105px; z-index: 50;
+    pointer-events: none; will-change: transform; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));
+}
+#vector-bunny svg { width: 100%; height: 100%; display: block; overflow: visible; }
+#b-inner { transform-origin: 50% 100%; transform-box: fill-box; }
+#b-shadow { transform-origin: 50% 50%; transform-box: fill-box; }
+
+.container { width: 100%; max-width: 620px; text-align: center; position: relative; z-index: 2; }
+.logo { margin-bottom: 16px; }
+.logo h1 {
+    font-family: 'Oswald', sans-serif; font-size: clamp(38px, 7vw, 65px); font-weight: 600;
+    line-height: 1.12; letter-spacing: 2px; text-transform: uppercase;
+    position: relative; display: inline-block; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.85));
+}
+.snow-word {
+    position: relative; display: inline-block;
+    background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 22%, #d1e3f8 32%, #F58220 39%, #F58220 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.snow-word.highlight {
+    background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 24%, #d1e3f8 34%, #FF9A35 41%, #FF9A35 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.snow-word::after {
+    display: none;
+    content: ''; position: absolute; top: 0px; left: 1%; width: 98%; height: 10px;
+    background: radial-gradient(ellipse at 15% 100%, #ffffff 70%, transparent 78%),
+                radial-gradient(ellipse at 38% 100%, #ffffff 85%, transparent 92%),
+                radial-gradient(ellipse at 65% 100%, #ffffff 75%, transparent 82%),
+                radial-gradient(ellipse at 88% 100%, #ffffff 65%, transparent 72%);
+    filter: blur(0.4px) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); pointer-events: none; opacity: calc(0.95 * var(--cap, 1));
+}
+.subtitle { font-size: 13px; letter-spacing: 4px; color: #dcebf7; text-transform: uppercase; margin-top: 16px; text-shadow: 0 2px 8px rgba(0,0,0,0.85); }
+.separator { width: 65px; height: 4px; background: linear-gradient(180deg, #ffffff 0%, #ffffff 45%, #F58220 55%, #F58220 100%); margin: 30px auto; border-radius: 5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+.description { font-size: 14px; line-height: 1.8; color: #e6eff7; max-width: 480px; margin: 0 auto 42px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
+.versions { display: flex; justify-content: center; text-align: left; margin-bottom: 38px; }
+.version-card {
+    width: 100%; position: relative; background: rgba(12, 22, 30, 0.68);
+    border: 1px solid rgba(210, 235, 255, 0.35); border-radius: 8px;
+    padding: 30px 28px 26px; backdrop-filter: blur(7px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.snow-cap-svg {
+    display: none;
+    position: absolute; top: -12px; left: -1px; width: calc(100% + 2px); height: 18px;
+    pointer-events: none; z-index: 3; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
+}
+.version-number { font-size: 10px; letter-spacing: 2px; color: #F58220; margin-bottom: 10px; font-weight: 700; }
+.version-card h2 { font-family: 'Oswald', sans-serif; font-size: 26px; font-weight: 500; margin-bottom: 12px; color: #fff; }
+.version-card p { font-size: 13.5px; line-height: 1.85; color: #d6e4f0; }
+.download-heading { font-family: 'Oswald', sans-serif; font-size: 23px; font-weight: 500; letter-spacing: 1px; margin-bottom: 22px; color: #f4f9ff; text-shadow: 0 2px 8px rgba(0,0,0,0.85); }
+.download-columns { display: flex; justify-content: center; text-align: left; }
+.download-list { width: 100%; display: flex; flex-direction: column; gap: 15px; }
+.download-btn {
+    position: relative; display: flex; align-items: center; justify-content: space-between;
+    background: rgba(12, 22, 30, 0.68); color: #eeeeee; text-decoration: none; padding: 16px 18px 14px;
+    border: 1px solid rgba(210, 235, 255, 0.32); border-radius: 7px; min-height: 65px;
+    transition: 0.2s ease; backdrop-filter: blur(5px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); cursor: pointer;
+}
+.download-btn:hover { background: rgba(20, 36, 50, 0.88); border-color: #F58220; transform: translateY(-2px); }
+.provider { display: flex; align-items: center; gap: 13px; }
+.provider svg { width: 30px; height: 30px; flex-shrink: 0; }
+.provider-info { text-align: left; }
+.provider-name { font-size: 14.5px; font-weight: 600; }
+.download-label { display: flex; align-items: center; gap: 6px; font-size: 9px; font-weight: 600; letter-spacing: 1px; color: #F58220; }
+.download-label svg { width: 14px; height: 14px; }
+.footer { margin-top: 50px; color: #c8d9e8; font-size: 11px; letter-spacing: 1.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
+.footer strong { color: #F58220; }
+
+.modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(4, 10, 16, 0.82); backdrop-filter: blur(8px); z-index: 1000;
+    align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.25s ease;
+}
+.modal-content {
+    background: linear-gradient(135deg, rgba(16, 28, 40, 0.95), rgba(8, 16, 24, 0.98));
+    border: 1px solid rgba(245, 130, 32, 0.4); border-radius: 10px; max-width: 460px; width: 100%;
+    padding: 30px 25px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.7); position: relative;
+}
+.modal-content h3 { font-family: 'Oswald', sans-serif; font-size: 22px; color: #fff; margin-bottom: 14px; letter-spacing: 1px; }
+.modal-content p { font-size: 13.5px; line-height: 1.7; color: #d2e2f2; margin-bottom: 20px; }
+.key-box {
+    background: rgba(5, 12, 18, 0.9); border: 1px dashed rgba(245, 130, 32, 0.6); border-radius: 6px;
+    padding: 12px 14px; font-family: monospace; font-size: 12px; color: #FF9A35;
+    word-break: break-all; user-select: all; margin-bottom: 24px;
+}
+.modal-btn {
+    display: inline-block; background: #F58220; color: #fff; font-family: 'Oswald', sans-serif; font-size: 16px;
+    letter-spacing: 1px; text-transform: uppercase; text-decoration: none; padding: 12px 28px; border-radius: 6px;
+    border: none; cursor: pointer; transition: 0.2s ease; box-shadow: 0 4px 15px rgba(245, 130, 32, 0.4);
+}
+.modal-btn:hover { background: #ff9338; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 130, 32, 0.6); }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+@media (max-width: 650px) {
+    body { background-attachment: scroll; }
+    .version-card { padding: 25px 20px 22px; }
+    .version-card h2 { font-size: 23px; }
+    .description { margin-bottom: 35px; }
+    .download-heading { margin-top: 5px; }
+    .footer { margin-top: 35px; }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="snow-canvas"></canvas>
+
+<!-- Shovel (appears near snowy surfaces) -->
+<div id="shovel">
+    <svg viewBox="0 0 350 350" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="shWood" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#c99a5c"/><stop offset="0.5" stop-color="#eecb96"/><stop offset="1" stop-color="#cf9f62"/>
+            </linearGradient>
+            <linearGradient id="shPlastic" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFA84A"/><stop offset="1" stop-color="#EE7A18"/>
+            </linearGradient>
+        </defs>
+        <g transform="translate(110 270) rotate(32)">
+            <!-- D-grip -->
+            <rect x="-24" y="-232" width="48" height="34" rx="14" stroke="#2b313b" stroke-width="10"/>
+            <rect x="-24" y="-232" width="48" height="34" rx="14" stroke="#4b5563" stroke-width="2" opacity="0.6"/>
+            <!-- shaft -->
+            <rect x="-7" y="-200" width="14" height="140" fill="url(#shWood)" stroke="#b88a52" stroke-width="1.5"/>
+            <!-- metal socket -->
+            <path d="M-13 -42 L-9 -68 H9 L13 -42 Z" fill="#6f7b89" stroke="#4b5563" stroke-width="1.5" stroke-linejoin="round"/>
+            <rect x="-10" y="-62" width="20" height="5" fill="#4b5563"/>
+            <!-- wide scoop blade with raised sides -->
+            <path d="M-46 -34 Q-46 -44 -36 -44 H36 Q46 -44 46 -34 L56 36 Q57 46 46 46 H-46 Q-57 46 -56 36 Z" fill="url(#shPlastic)" stroke="#B85C10" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M-46 -34 Q-46 -44 -36 -44 L-31 -44 L-40 38 L-56 36 Z" fill="#E07418"/>
+            <path d="M46 -34 Q46 -44 36 -44 L31 -44 L40 38 L56 36 Z" fill="#E07418"/>
+            <path d="M-12 -34 V32 M0 -34 V32 M12 -34 V32" stroke="#FFC27A" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+            <!-- metal wear strip -->
+            <path d="M-56 36 H56 Q57 46 46 46 H-46 Q-57 46 -56 36 Z" fill="#a8b2be" stroke="#6f7b89" stroke-width="2" stroke-linejoin="round"/>
+        </g>
+    </svg>
+</div>
+
+<div id="vector-bunny">
+    <svg viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="bBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d6e3ef"/></linearGradient>
+            <linearGradient id="bHead" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e4edf6"/></linearGradient>
+        </defs>
+        <ellipse id="b-shadow" cx="76" cy="132" rx="40" ry="5" fill="rgba(0,0,0,0.28)"/>
+        <g id="b-inner">
+            <circle cx="26" cy="92" r="12" fill="#fff" stroke="#c9d8e6" stroke-width="2"/>
+            <!-- far ear -->
+            <g id="b-ear2"><g transform="rotate(-8 100 20)">
+                <ellipse cx="100" cy="20" rx="8" ry="27" fill="#dfe8f1" stroke="#c3d2e0" stroke-width="1.5"/>
+                <ellipse cx="100" cy="22" rx="3.6" ry="18" fill="#f7b6c8" opacity="0.8"/></g></g>
+            <!-- far legs -->
+            <g id="b-legH2"><ellipse cx="60" cy="123" rx="15" ry="7" fill="#c5d3e0"/></g>
+            <g id="b-legF2"><ellipse cx="106" cy="119" rx="5" ry="13" fill="#c5d3e0"/></g>
+            <!-- body -->
+            <ellipse cx="70" cy="92" rx="46" ry="30" fill="url(#bBody)" stroke="#d3e0ec" stroke-width="1.5"/>
+            <ellipse cx="48" cy="100" rx="24" ry="21" fill="#eef4fa" stroke="#d3e0ec" stroke-width="1.5"/>
+            <!-- near legs -->
+            <g id="b-legH">
+                <ellipse cx="48" cy="114" rx="7" ry="10" fill="#fff" stroke="#c9d8e6" stroke-width="1.5"/>
+                <ellipse cx="54" cy="125" rx="18" ry="7.5" fill="#fff" stroke="#c9d8e6" stroke-width="1.5"/></g>
+            <g id="b-legF">
+                <ellipse cx="100" cy="116" rx="6" ry="15" fill="#fff" stroke="#c9d8e6" stroke-width="1.5"/>
+                <ellipse cx="104" cy="128" rx="8" ry="4.5" fill="#fff" stroke="#c9d8e6" stroke-width="1.5"/></g>
+            <!-- scarf -->
+            <path d="M96 100 L92 114 L103 112 L106 99 Z" fill="#e06f12"/>
+            <path d="M90 70 Q104 88 118 78 L121 91 Q104 102 88 85 Z" fill="#F58220"/>
+            <path d="M92 78 Q104 94 119 84" stroke="#FFB36B" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <!-- near ear -->
+            <g id="b-ear1"><g transform="rotate(10 122 18)">
+                <ellipse cx="122" cy="18" rx="8.5" ry="28" fill="#f6fafd" stroke="#c3d2e0" stroke-width="1.5"/>
+                <ellipse cx="122" cy="20" rx="3.8" ry="19" fill="#f7b6c8" opacity="0.85"/></g></g>
+            <!-- head -->
+            <circle cx="114" cy="64" r="22" fill="url(#bHead)" stroke="#d3e0ec" stroke-width="1.5"/>
+            <ellipse cx="130" cy="72" rx="13" ry="10" fill="#fff"/>
+            <ellipse cx="124" cy="72" rx="5" ry="3" fill="#f9a8c0" opacity="0.4"/>
+            <ellipse cx="141" cy="69" rx="3.6" ry="3" fill="#f4a6b8"/>
+            <path d="M137 74 Q133 78 128 75" stroke="#94a3b8" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+            <circle cx="122" cy="60" r="4.4" fill="#1e293b"/>
+            <circle cx="123.6" cy="58.5" r="1.5" fill="#fff"/>
+            <path d="M134 72 L152 66 M134 73 L154 73 M134 74 L151 80" stroke="#b8c7d6" stroke-width="1.2" stroke-linecap="round"/>
+        </g>
+    </svg>
+</div>
+
+<div class="modal-overlay" id="mega-modal">
+    <div class="modal-content">
+        <h3>MEGA Decryption Key</h3>
+        <p>If you're asked for a decryption key to download, copy and paste this key when prompted:</p>
+        <div class="key-box" id="key-text">zqg45mJlvNvrMnY34Etjjvzs8kKFnaYglcL0rlnDcmYzqg45mJlvNvrMnY34Etjjvzs8kKFnaYglcL0rlnDcmY</div>
+        <button class="modal-btn" id="modal-continue-btn">Continue to Mega</button>
+    </div>
+</div>
+
+<div class="container">
+
+    <div class="logo">
+        <h1>
+            <span class="snow-word">THEHUNTER</span><br>
+            <span class="snow-word highlight">CLASSIC</span><br>
+            <span class="snow-word">PRESERVED</span>
+        </h1>
+        <div class="subtitle">The legacy lives on</div>
+    </div>
+
+    <div class="separator"></div>
+
+    <p class="description">
+        A community preservation project dedicated to keeping
+        theHunter Classic alive. Download the preserved game
+        and continue your hunting adventures.
+    </p>
+
+    <div class="versions">
+        <div class="version-card">
+            <svg class="snow-cap-svg" viewBox="0 0 600 18" preserveAspectRatio="none">
+                <path d="M0,14 C35,2 85,2 135,10 C195,18 250,0 320,6 C390,12 450,1 515,7 C555,11 585,5 600,13 L600,18 L0,18 Z" fill="#ffffff"/>
+                <path d="M0,15 C45,8 100,9 155,14 C220,18 280,7 350,11 C420,15 490,8 550,12 C575,14 592,11 600,15 L600,18 L0,18 Z" fill="#dceefa"/>
+            </svg>
+            <div class="version-number">STANDALONE RELEASE</div>
+            <h2>Full Portable Version</h2>
+            <p>
+                This version contains everything you need to play
+                the game offline, including all necessary game files.
+                No existing game installation is required.
+            </p>
+        </div>
+    </div>
+
+    <h2 class="download-heading">CHOOSE YOUR DOWNLOAD MIRROR</h2>
+
+    <div class="download-columns">
+        <div class="download-list">
+
+            <a href="javascript:void(0);" class="download-btn" id="mega-btn">
+                <svg class="snow-cap-svg" viewBox="0 0 600 18" preserveAspectRatio="none">
+                    <path d="M0,15 C50,4 120,6 190,12 C270,17 340,3 420,9 C490,14 550,5 600,14 L600,18 L0,18 Z" fill="#ffffff"/>
+                </svg>
+                <div class="provider">
+                    <svg viewBox="0 0 48 48">
+                        <path d="M5 36V12H13L24 24L35 12H43V36H35V23L24 35L13 23V36H5Z" fill="#D92735"/>
+                    </svg>
+                    <div class="provider-info"><div class="provider-name">MEGA</div></div>
+                </div>
+                <div class="download-label">DOWNLOAD
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg>
+                </div>
+            </a>
+
+            <a href="https://drive.google.com/file/d/1nWPOa4HWFhtqGFqztBX_SuUL8mN9Bmwi/view?usp=sharing" class="download-btn">
+                <svg class="snow-cap-svg" viewBox="0 0 600 18" preserveAspectRatio="none">
+                    <path d="M0,14 C70,3 140,12 220,7 C300,2 380,14 460,8 C520,3 570,9 600,15 L600,18 L0,18 Z" fill="#ffffff"/>
+                </svg>
+                <div class="provider">
+                    <svg viewBox="0 0 48 48">
+                        <path d="M17 5H29L45 33H33Z" fill="#00875A"/>
+                        <path d="M17 5H29L13 33H1Z" fill="#0085F7"/>
+                        <path d="M1 33H33L27 43H7Z" fill="#FFBA00"/>
+                    </svg>
+                    <div class="provider-info"><div class="provider-name">Google Drive</div></div>
+                </div>
+                <div class="download-label">DOWNLOAD
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg>
+                </div>
+            </a>
+
+            <a href="#" class="download-btn">
+                <svg class="snow-cap-svg" viewBox="0 0 600 18" preserveAspectRatio="none">
+                    <path d="M0,15 C40,6 110,3 180,11 C250,17 330,4 410,8 C485,12 545,4 600,14 L600,18 L0,18 Z" fill="#ffffff"/>
+                </svg>
+                <div class="provider">
+                    <svg viewBox="0 0 48 48" fill="#0061FF">
+                        <path d="M13 5L2 12L13 20L24 12Z"/>
+                        <path d="M35 5L24 12L35 20L46 12Z"/>
+                        <path d="M2 26L13 34L24 26L13 19Z"/>
+                        <path d="M46 26L35 34L24 26L35 19Z"/>
+                        <path d="M13 38L24 45L35 38L24 31Z"/>
+                    </svg>
+                    <div class="provider-info"><div class="provider-name">Dropbox</div></div>
+                </div>
+                <div class="download-label">DOWNLOAD
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M5 21h14"/></svg>
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+    <div class="footer">
+        <strong>THEHUNTER CLASSIC PRESERVED</strong>
+        <br><br>
+        MADE BY THE COMMUNITY · FOR THE COMMUNITY
+    </div>
+
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   Snow engine: falling flakes -> piles on words / card / buttons.
+   Move the mouse near a snowy surface: a shovel appears and throws
+   the snow off. Thrown snow falls down and vanishes at the bottom.
+------------------------------------------------------------------- */
+(function () {
+    const canvas = document.getElementById('snow-canvas');
+    const ctx = canvas.getContext('2d');
+    const shovel = document.getElementById('shovel');
+
+    const COL = 4;        // px per snow column
+    const CLEAR = 28;     // shovel clears everything within this distance of the cursor
+    const SLOPE = 30;     // beyond that the snow slopes up smoothly over this distance
+
+    // pre-rendered soft snowflake: bright core with a feathered edge
+    const sprite = document.createElement('canvas');
+    sprite.width = sprite.height = 32;
+    (function () {
+        const c = sprite.getContext('2d');
+        const g = c.createRadialGradient(16, 16, 0, 16, 16, 16);
+        g.addColorStop(0, 'rgba(255,255,255,1)');
+        g.addColorStop(0.3, 'rgba(255,255,255,0.9)');
+        g.addColorStop(0.65, 'rgba(232,244,255,0.28)');
+        g.addColorStop(1, 'rgba(232,244,255,0)');
+        c.fillStyle = g; c.fillRect(0, 0, 32, 32);
+    })();
+
+    let W, H, flakes = [], surfaces = [], bits = [];
+    const mouse = { x: -999, y: -999, vx: 0, vy: 0, active: false, overMirror: false };
+
+    function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+        buildSurfaces();
+        createFlakes();
+    }
+
+    /* Surfaces snow can rest on. 'top' piles sit on the upper edge (words, card, MEGA);
+       'left' / 'right' piles cling to the sides of Google Drive and Dropbox. */
+    function buildSurfaces() {
+        surfaces = [];
+        const make = (o, len) => {
+            o.n = Math.max(2, Math.ceil(len / COL));
+            o.h = new Float32Array(o.n);
+            for (let i = 0; i < o.n; i++) o.h[i] = o.max * (o.seed + 0.08 * Math.sin(i * 0.12));
+            o.capV = -1; o.inset = o.isWord ? 2 : 9; o.x = o.y = o.w = o.len = o.ex = 0;
+            surfaces.push(o);
+        };
+        document.querySelectorAll('.snow-word').forEach(el =>
+            make({ el, kind: 'top', isWord: true, max: 19, seed: 0.3, cap: null }, el.getBoundingClientRect().width));
+        const card = document.querySelector('.version-card');
+        make({ el: card, kind: 'top', max: 20, seed: 0.3, cap: card.querySelector('.snow-cap-svg') }, card.getBoundingClientRect().width);
+
+        document.querySelectorAll('.download-btn').forEach((el, idx) => {
+            const r = el.getBoundingClientRect();
+            const cap = el.querySelector('.snow-cap-svg');
+            if (idx === 0) make({ el, kind: 'top', max: 14, seed: 0.3, cap }, r.width);   // only MEGA gets snow
+        });
+    }
+
+    function trackSurfaces() {
+        for (const s of surfaces) {
+            const r = s.el.getBoundingClientRect();
+            if (s.kind === 'top') {
+                s.x = r.left; s.w = r.width;
+                s.y = r.top + (s.isWord ? r.height * 0.14 : 0);
+            } else {
+                s.ex = s.kind === 'left' ? r.left : r.right;
+                s.y = r.top + 8; s.len = r.height - 16;
+            }
+        }
+    }
+
+    function createFlakes() {
+        const count = Math.min(Math.floor(W / 5), 280);
+        flakes = [];
+        for (let i = 0; i < count; i++) {
+            const layer = Math.random();
+            let r, sy, sx, o;
+            if (layer < 0.3)       { r = Math.random() * 0.6 + 0.4; sy = Math.random() * 0.4 + 0.3; sx = Math.random() * 0.3 - 0.15; o = Math.random() * 0.3 + 0.2; }
+            else if (layer < 0.75) { r = Math.random() * 0.9 + 0.9; sy = Math.random() * 0.9 + 0.6; sx = Math.random() * 0.6 - 0.3; o = Math.random() * 0.45 + 0.4; }
+            else                   { r = Math.random() * 0.8 + 1.6; sy = Math.random() * 1.5 + 1.1; sx = Math.random() * 1.0 - 0.5; o = Math.random() * 0.3 + 0.65; }
+            flakes.push({ x: Math.random() * W, y: Math.random() * H, r, speedY: sy, speedX: sx,
+                          drift: Math.random() * Math.PI * 2, driftSpeed: Math.random() * 0.01 + 0.008, opacity: o });
+        }
+    }
+
+    function addSnow(s, i, amount) {
+        const add = (k, a) => { if (k >= 0 && k < s.n) s.h[k] = Math.min(s.max, s.h[k] + a); };
+        add(i, amount); add(i - 1, amount * 0.6); add(i + 1, amount * 0.6);
+        add(i - 2, amount * 0.3); add(i + 2, amount * 0.3);
+    }
+
+    // Soft diffusion plus slumping of steep spots keeps every pile smooth
+    function relax(s) {
+        const h = s.h;
+        for (let i = 0; i < s.n - 1; i++) {
+            const d = h[i] - h[i + 1];
+            const m = (d > 2.5 || d < -2.5) ? d * 0.2 : d * 0.05;
+            h[i] -= m; h[i + 1] += m;
+        }
+        for (let i = 0; i < s.n; i++) if (h[i] < 0.05) h[i] = 0;
+    }
+
+    // Painted caps (CSS/SVG) are only visible while there is snow, so a cleaned box is fully clean
+    function updateCap(s) {
+        if (s.kind !== 'top') return;
+        let sum = 0;
+        for (let i = 0; i < s.n; i++) sum += s.h[i];
+        const v = Math.round(Math.min(1, sum / s.n / (s.max * 0.25)) * 50) / 50;
+        if (v === s.capV) return;
+        s.capV = v;
+        if (s.cap) s.cap.style.opacity = v; else s.el.style.setProperty('--cap', v);
+    }
+
+    function updateFlakes() {
+        for (const f of flakes) {
+            const prevY = f.y;
+            f.drift += f.driftSpeed;
+            f.y += f.speedY;
+            f.x += f.speedX + Math.sin(f.drift) * 0.4;
+
+            let landed = false;
+            for (const s of surfaces) {
+                if (s.kind === 'top') {
+                    if (f.x < s.x || f.x > s.x + s.w) continue;
+                    const i = Math.min(s.n - 1, ((f.x - s.x) / s.w * s.n) | 0);
+                    const top = s.y - s.h[i];
+                    if (prevY <= top && f.y >= top && s.h[i] < s.max) { addSnow(s, i, 0.15 + f.r * 0.2); landed = true; break; }
+                } else {
+                    // snow blowing past the side of a box sticks to it
+                    const out = (f.x - s.ex) * s.dir;
+                    if (out > -3 && out < 70 && prevY < s.y && f.y >= s.y) {
+                        addSnow(s, (Math.random() * s.n) | 0, f.r * 1.5); landed = true; break;
+                    }
+                }
+            }
+            if (landed || f.y > H + 10) { f.y = -10; f.x = Math.random() * W; }
+            if (f.x > W + 10) f.x = -10;
+            if (f.x < -10) f.x = W + 10;
+
+            const size = f.r * 4;
+            ctx.globalAlpha = f.opacity;
+            ctx.drawImage(sprite, f.x - size / 2, f.y - size / 2, size, size);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // Carve a trench under the shovel: flat bottom, smooth sloped walls
+    function dig(s) {
+        const top = s.kind === 'top';
+        if (top) {
+            if (mouse.x < s.x - 60 || mouse.x > s.x + s.w + 60 || mouse.y < s.y - s.max - 40 || mouse.y > s.y + 40) return false;
+        } else {
+            if (Math.abs(mouse.x - s.ex) > 60 || mouse.y < s.y - 60 || mouse.y > s.y + s.len + 60) return false;
+        }
+        const m = top ? mouse.x : mouse.y;
+        let any = false;
+        for (let i = 0; i < s.n; i++) {
+            const pos = top ? s.x + (i + 0.5) * s.w / s.n : s.y + (i + 0.5) * s.len / s.n;
+            const dx = Math.abs(pos - m);
+            if (dx > CLEAR + SLOPE) continue;
+            const t = dx <= CLEAR ? 0 : (dx - CLEAR) / SLOPE;
+            const ceil = t * t * s.max * 1.5;
+            if (s.h[i] <= ceil) continue;
+            const take = Math.min(s.h[i] - ceil, 1.4);
+            s.h[i] -= take;
+            any = true;
+            const n = Math.ceil(take * 1.5);
+            for (let k = 0; k < n && bits.length < 700; k++) {
+                bits.push(top
+                    ? { x: pos + (Math.random() - 0.5) * COL, y: s.y - s.h[i] - 1,
+                        vx: (Math.random() - 0.5) * 3 + mouse.vx * 0.2, vy: -Math.random() * 3.2 - 0.8, r: Math.random() * 2.4 + 1 }
+                    : { x: s.ex + s.dir * s.h[i], y: pos,
+                        vx: s.dir * Math.random() * 2.5 + mouse.vx * 0.2, vy: -Math.random() * 2 - 0.5, r: Math.random() * 2.4 + 1 });
+            }
+        }
+        return any;
+    }
+
+    function updateShovel(time) {
+        // the shovel is visible everywhere except over the download mirrors (and the popup)
+        const near = mouse.active && !mouse.overMirror &&
+                     document.getElementById('mega-modal').style.display !== 'flex';
+        let digging = false;
+        if (near) for (const s of surfaces) if (dig(s)) digging = true;
+        shovel.classList.toggle('on', near);
+        if (near) {
+            shovel.style.transform = `translate(${mouse.x - 22}px, ${mouse.y - 54}px)`;
+        }
+    }
+
+    function updateBits() {
+        ctx.fillStyle = '#ffffff';
+        for (let i = bits.length - 1; i >= 0; i--) {
+            const b = bits[i];
+            b.vy += 0.28; b.vx *= 0.99;
+            b.x += b.vx; b.y += b.vy;
+            if (b.y > H + 10 || b.x < -20 || b.x > W + 20) { bits.splice(i, 1); continue; }   // gone at the bottom
+            ctx.globalAlpha = 0.92;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // Smooth curve through points (quadratic through midpoints)
+    function curve(p) {
+        for (let i = 1; i < p.length - 1; i++) {
+            ctx.quadraticCurveTo(p[i][0], p[i][1], (p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2);
+        }
+        ctx.lineTo(p[p.length - 1][0], p[p.length - 1][1]);
+    }
+
+    function drawPiles() {
+        for (const s of surfaces) {
+            let peak = 0;
+            for (let i = 0; i < s.n; i++) if (s.h[i] > peak) peak = s.h[i];
+            if (peak < 0.4) continue;
+            const fade = Math.min(1, (peak - 0.4) / 2.5);   // new snow fades in as a soft mound, never as a thin line
+
+            const top = s.kind === 'top';
+            const len = top ? s.w : s.len, step = len / s.n;
+            const pts = [];
+            let sm = s.h;                                   // smooth what we draw (two light blur passes)
+            for (let pass = 0; pass < 2; pass++) {
+                const t = new Float32Array(s.n);
+                for (let i = 0; i < s.n; i++) t[i] = 0.25 * sm[Math.max(0, i - 1)] + 0.5 * sm[i] + 0.25 * sm[Math.min(s.n - 1, i + 1)];
+                sm = t;
+            }
+            for (let i = 0; i < s.n; i++) {
+                const px = s.x + (i + 0.5) * step;
+                if (top && (px < s.x + s.inset || px > s.x + s.w - s.inset)) continue;   // stay inside the rounded corners
+                let e = top ? Math.min(px - (s.x + s.inset), s.x + s.w - s.inset - px) / 22
+                            : Math.min(i + 0.5, s.n - i - 0.5) * step / 14;               // ease the pile out at both ends
+                e = Math.max(0, Math.min(1, e)); e = e * e * (3 - 2 * e);
+                const hh = sm[i] * e;
+                pts.push(top ? [px, s.y - hh]
+                             : [s.ex + s.dir * hh, s.y + (i + 0.5) * step]);
+            }
+            ctx.beginPath();
+            if (top) {
+                const x0 = s.x + s.inset, x1 = s.x + s.w - s.inset;
+                ctx.moveTo(x0, s.y + Math.min(2, peak * 0.5));
+                ctx.lineTo(x0, s.y);
+                curve([[x0, s.y], ...pts, [x1, s.y]]);
+                ctx.lineTo(x1, s.y + Math.min(2, peak * 0.5));
+                const g = ctx.createLinearGradient(0, s.y - s.max, 0, s.y + 3);
+                g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#cfe3f6');
+                ctx.fillStyle = g;
+            } else {
+                ctx.moveTo(s.ex - s.dir * 3, s.y);
+                ctx.lineTo(s.ex, s.y);
+                curve([[s.ex, s.y], ...pts, [s.ex, s.y + s.len]]);
+                ctx.lineTo(s.ex - s.dir * 3, s.y + s.len);
+                const g = ctx.createLinearGradient(s.ex, 0, s.ex + s.dir * s.max, 0);
+                g.addColorStop(0, '#cfe3f6'); g.addColorStop(1, '#ffffff');
+                ctx.fillStyle = g;
+            }
+            ctx.closePath();
+            ctx.shadowColor = 'rgba(0,0,0,0.35)';
+            ctx.shadowBlur = 4 * fade;
+            ctx.globalAlpha = fade;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function frame(time) {
+        ctx.clearRect(0, 0, W, H);
+        trackSurfaces();
+        updateShovel(time);
+        for (const s of surfaces) { relax(s); updateCap(s); }
+        updateFlakes();
+        drawPiles();
+        updateBits();
+        mouse.vx *= 0.8; mouse.vy *= 0.8;
+        requestAnimationFrame(frame);
+    }
+
+    function setPointer(x, y) {
+        mouse.vx = x - mouse.x; mouse.vy = y - mouse.y;
+        mouse.x = x; mouse.y = y; mouse.active = true;
+        const t = document.elementFromPoint(x, y);
+        mouse.overMirror = !!(t && t.closest('.download-btn'));
+    }
+    window.addEventListener('mousemove', e => setPointer(e.clientX, e.clientY));
+    window.addEventListener('touchmove', e => { const t = e.touches[0]; setPointer(t.clientX, t.clientY); }, { passive: true });
+    window.addEventListener('touchstart', e => { const t = e.touches[0]; setPointer(t.clientX, t.clientY); }, { passive: true });
+    window.addEventListener('touchend', () => { mouse.active = false; });
+    document.addEventListener('mouseleave', () => { mouse.active = false; });
+    window.addEventListener('resize', resize);
+    window.addEventListener('load', buildSurfaces);   // layout settles once fonts are loaded
+
+    resize();
+    requestAnimationFrame(frame);
+})();
+
+// Snow bunny: wanders slowly, runs away from the mouse, always stays inside the window
+(function () {
+    const el = document.getElementById('vector-bunny');
+    const inner = document.getElementById('b-inner');
+    const shadow = document.getElementById('b-shadow');
+    const g = id => document.getElementById(id);
+    const legH = g('b-legH'), legF = g('b-legF'), legH2 = g('b-legH2'), legF2 = g('b-legF2');
+    const ear1 = g('b-ear1'), ear2 = g('b-ear2');
+    const BW = 120, BH = 105, M = 8;
+
+    let x = innerWidth / 2, y = innerHeight / 2, tx = x, ty = y;
+    let ux = 1, uy = 0, speed = 0, face = 1, faceT = 1, phase = 0, idle = 90, twitch = 0, t = 0;
+    let fleeing = false, mx = -9999, my = -9999;
+
+    const bounds = () => ({ minX: BW / 2 + M, maxX: innerWidth - BW / 2 - M, minY: BH + M, maxY: innerHeight - M });
+    const rand = (a, b) => a + Math.random() * (b - a);
+    function pick() { const b = bounds(); tx = rand(b.minX, b.maxX); ty = rand(b.minY, b.maxY); }
+    const pivot = (node, a, px, py) => node.setAttribute('transform', `rotate(${a.toFixed(2)} ${px} ${py})`);
+
+    window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    window.addEventListener('touchmove', e => { mx = e.touches[0].clientX; my = e.touches[0].clientY; }, { passive: true });
+    window.addEventListener('touchend', () => { mx = my = -9999; });
+    document.addEventListener('mouseleave', () => { mx = my = -9999; });
+    pick();
+
+    function frame() {
+        t++;
+        const b = bounds();
+        const dx = x - mx, dy = (y - BH * 0.4) - my, d = Math.hypot(dx, dy);
+
+        if (d < 150) fleeing = true;
+        else if (fleeing && d > 240) { fleeing = false; idle = 40; pick(); }
+
+        let target = 0;
+        if (fleeing) {
+            let fx = dx / (d || 1), fy = dy / (d || 1);
+            const pad = 16;
+            const blockX = (x <= b.minX + pad && fx < 0) || (x >= b.maxX - pad && fx > 0);
+            const blockY = (y <= b.minY + pad && fy < 0) || (y >= b.maxY - pad && fy > 0);
+            if (blockX && blockY) { fx = x < innerWidth / 2 ? 1 : -1; fy = 0; }        // cornered: dash along the wall
+            else if (blockX) { fx = 0; fy = Math.abs(dy) > 3 ? Math.sign(dy) : (y < innerHeight / 2 ? 1 : -1); }
+            else if (blockY) { fy = 0; fx = Math.abs(dx) > 3 ? Math.sign(dx) : (x < innerWidth / 2 ? 1 : -1); }
+            const n = Math.hypot(fx, fy) || 1;
+            ux = fx / n; uy = fy / n; target = 3.6;
+        } else if (idle > 0) {
+            idle--;
+        } else {
+            const tdx = tx - x, tdy = ty - y, td = Math.hypot(tdx, tdy);
+            if (td < 4) { idle = rand(60, 220); pick(); }
+            else { ux = tdx / td; uy = tdy / td; target = 0.7; }
+        }
+        speed += (target - speed) * 0.08;
+        if (speed < 0.01) speed = 0;
+
+        x = Math.max(b.minX, Math.min(b.maxX, x + ux * speed));
+        y = Math.max(b.minY, Math.min(b.maxY, y + uy * speed));
+        if (Math.abs(ux) > 0.25) faceT = ux > 0 ? 1 : -1;
+        face += (faceT - face) * 0.2;
+
+        // animation
+        phase += 0.045 + speed * 0.03;
+        const k = Math.min(1, speed / 0.5);
+        const swing = Math.sin(phase) * (12 + speed * 7) * k;
+        const hop = Math.abs(Math.sin(phase)) * Math.min(16, speed * 3.5) * k;
+        if (!twitch && Math.random() < 0.006) twitch = 18;
+        const tw = twitch ? Math.sin(twitch * 1.2) * 9 : 0;
+        if (twitch) twitch--;
+        const back = Math.min(14, speed * 4);
+
+        pivot(legH, swing, 50, 106);   pivot(legH2, -swing * 0.8, 56, 106);
+        pivot(legF, -swing * 0.9, 98, 100); pivot(legF2, swing * 0.8, 102, 100);
+        pivot(ear1, -4 - back + tw + Math.sin(t * 0.05) * 1.5, 118, 46);
+        pivot(ear2, -2 - back * 0.8 - tw * 0.6, 104, 48);
+
+        el.style.transform = `translate(${x - BW / 2}px, ${y - BH}px)`;
+        inner.style.transform = `translateY(${-hop}px) rotate(${(Math.sin(phase) * speed * 0.9).toFixed(2)}deg) scaleX(${face.toFixed(3)})`;
+        shadow.style.transform = `scaleX(${(1 - hop * 0.02).toFixed(3)})`;
+        shadow.style.opacity = 1 - hop * 0.03;
+        requestAnimationFrame(frame);
+    }
+
+    window.addEventListener('resize', () => { const b = bounds(); x = Math.max(b.minX, Math.min(b.maxX, x)); y = Math.max(b.minY, Math.min(b.maxY, y)); pick(); });
+    requestAnimationFrame(frame);
+})();
+
+// Modal Popup Interactivity for MEGA
+const megaBtn = document.getElementById('mega-btn');
+const megaModal = document.getElementById('mega-modal');
+const continueBtn = document.getElementById('modal-continue-btn');
+
+megaBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    megaModal.style.display = 'flex';
+});
+
+continueBtn.addEventListener('click', () => {
+    window.location.href = 'https://mega.nz/file/I58WxQDD';
+});
+
+window.addEventListener('click', (e) => {
+    if (e.target === megaModal) {
+        megaModal.style.display = 'none';
+    }
+});
+</script>
+
+</body>
+</html>
